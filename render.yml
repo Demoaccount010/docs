@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: ubuntu-gui-vps
+    env: docker
+    plan: free   # ya starter/standard
+    autoDeploy: true
