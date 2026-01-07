@@ -2,14 +2,14 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DISPLAY=:1
-ENV VNC_PORT=5901
-ENV NOVNC_PORT=8900
 
-# Enable i386 (for Wine)
 RUN dpkg --add-architecture i386
 
-# Update & install core packages
-RUN apt update && apt install -y \
+# Update
+RUN apt update
+
+# Install REQUIRED + SAFE packages only
+RUN apt install -y \
     sudo \
     dbus-x11 \
     curl \
@@ -23,24 +23,23 @@ RUN apt update && apt install -y \
     xfce4-terminal \
     xfce4-goodies \
     tightvncserver \
-    firefox \
     mate-system-monitor \
     gnome-system-monitor \
-    fonts-zenhei \
+    fonts-wqy-zenhei \
     wine64 \
-    wine32 \
-    qemu-kvm \
+    wine32:i386 \
     supervisor \
-    && apt clean && rm -rf /var/lib/apt/lists/*
+    --no-install-recommends \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# noVNC install
+# noVNC
 WORKDIR /opt
-RUN git clone https://github.com/novnc/noVNC.git && \
-    git clone https://github.com/novnc/websockify noVNC/utils/websockify
+RUN git clone https://github.com/novnc/noVNC.git \
+ && git clone https://github.com/novnc/websockify noVNC/utils/websockify
 
-# Create user (non-root = stable)
-RUN useradd -m -s /bin/bash admin && \
-    echo "admin ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# User
+RUN useradd -m admin && echo "admin ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 USER admin
 WORKDIR /home/admin
@@ -50,14 +49,13 @@ RUN mkdir -p ~/.vnc && \
     echo "admin123@a" | vncpasswd -f > ~/.vnc/passwd && \
     chmod 600 ~/.vnc/passwd
 
-# XFCE startup
 RUN echo '#!/bin/sh\n\
 unset SESSION_MANAGER\n\
 unset DBUS_SESSION_BUS_ADDRESS\n\
 exec dbus-launch --exit-with-session startxfce4 &' \
 > ~/.vnc/xstartup && chmod +x ~/.vnc/xstartup
 
-# Supervisor config
+# Supervisor
 USER root
 RUN mkdir -p /etc/supervisor/conf.d
 
@@ -76,5 +74,4 @@ autorestart=true" \
 > /etc/supervisor/conf.d/vps.conf
 
 EXPOSE 8900
-
 CMD ["/usr/bin/supervisord"]
