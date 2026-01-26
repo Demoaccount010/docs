@@ -1,53 +1,52 @@
-# Base Image - Using Debian Sid (Unstable) for newer packages or Bullseye for stability. 
-# We use stable here for best bot performance.
 FROM debian:bullseye
 
+# Environment Variables
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DISPLAY=:0
+ENV DISPLAY=:1
 ENV RESOLUTION=1280x720
+ENV VNC_PORT=5901
 ENV VNC_PASSWORD=admin123
 
-# 1. Optimize Repos & Install Essentials (One single RUN layer to save space)
+# 1. Install Sabkuch (GUI, VNC, Bots Tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sudo \
-    wget \
-    curl \
-    git \
-    vim \
-    xz-utils \
-    dbus-x11 \
     xfce4 \
-    xfce4-terminal \
+    xfce4-goodies \
     tigervnc-standalone-server \
     tigervnc-common \
+    novnc \
+    websockify \
+    dbus-x11 \
+    x11-xserver-utils \
+    sudo \
+    curl \
+    wget \
+    git \
+    nano \
+    # Bot Tools
     python3 \
     python3-pip \
-    nodejs \
-    npm \
-    # Heavy Bot Tools
     aria2 \
     ffmpeg \
     p7zip-full \
     htop \
-    # Browser
-    firefox-esr \
+    chromium \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. Install noVNC (The Web Viewer)
-RUN mkdir -p /opt/novnc \
-    && wget -qO- https://github.com/novnc/noVNC/archive/v1.2.0.tar.gz | tar xz -C /opt/novnc --strip-components=1 \
-    && ln -s /opt/novnc/utils/launch.sh /opt/novnc/launch.sh \
-    && mkdir -p /opt/novnc/utils/websockify \
-    && wget -qO- https://github.com/novnc/websockify/archive/v0.10.0.tar.gz | tar xz -C /opt/novnc/utils/websockify --strip-components=1
+# 2. Setup noVNC (Manual Linking for stability)
+RUN ln -s /usr/share/novnc/utils/launch.sh /usr/share/novnc/launch.sh && \
+    ln -s /usr/lib/python3/dist-packages/websockify /usr/share/novnc/utils/websockify
 
-# 3. Setup Environment for Root (Allows Firefox to run as root)
-ENV HOME=/root
-RUN mkdir -p $HOME/.vnc
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+# 3. Install Fastfetch (For showing Fake High Specs)
+RUN wget https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb && \
+    dpkg -i fastfetch-linux-amd64.deb && \
+    rm fastfetch-linux-amd64.deb
 
-# 4. Port Exposure
-EXPOSE 8080
+# 4. Copy Script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# 5. Start Command
-CMD ["/start.sh"]
+# 5. Fix Permissions
+RUN mkdir -p /root/.vnc
+
+# 6. Start
+CMD ["/entrypoint.sh"]
