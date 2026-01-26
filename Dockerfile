@@ -1,63 +1,53 @@
-FROM ubuntu:22.04
+# Base Image - Using Debian Sid (Unstable) for newer packages or Bullseye for stability. 
+# We use stable here for best bot performance.
+FROM debian:bullseye
 
-# 1. Setup Environment
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DISPLAY=:1
-ENV VNC_PORT=5901
-ENV NO_VNC_PORT=10000
+ENV DISPLAY=:0
 ENV RESOLUTION=1280x720
-ENV HOME=/home/render
-ENV USER=render
+ENV VNC_PASSWORD=admin123
 
-# 2. Install Core System, GUI (XFCE), and VNC
+# 1. Optimize Repos & Install Essentials (One single RUN layer to save space)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    sudo \
+    wget \
+    curl \
+    git \
+    vim \
+    xz-utils \
+    dbus-x11 \
     xfce4 \
-    xfce4-goodies \
+    xfce4-terminal \
     tigervnc-standalone-server \
     tigervnc-common \
-    novnc \
-    websockify \
-    supervisor \
-    xterm \
-    dbus-x11 \
-    sudo \
-    curl \
-    wget \
-    git \
-    nano \
-    # High Performance Tools for Bots
     python3 \
     python3-pip \
     nodejs \
     npm \
+    # Heavy Bot Tools
     aria2 \
     ffmpeg \
     p7zip-full \
     htop \
-    chromium-browser \
+    # Browser
+    firefox-esr \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 3. Create User 'render' and give sudo access
-RUN useradd -m -s /bin/bash $USER && \
-    echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# 2. Install noVNC (The Web Viewer)
+RUN mkdir -p /opt/novnc \
+    && wget -qO- https://github.com/novnc/noVNC/archive/v1.2.0.tar.gz | tar xz -C /opt/novnc --strip-components=1 \
+    && ln -s /opt/novnc/utils/launch.sh /opt/novnc/launch.sh \
+    && mkdir -p /opt/novnc/utils/websockify \
+    && wget -qO- https://github.com/novnc/websockify/archive/v0.10.0.tar.gz | tar xz -C /opt/novnc/utils/websockify --strip-components=1
 
-# 4. Setup VNC and Supervisor Directories
-RUN mkdir -p /usr/share/novnc/utils/websockify && \
-    ln -s /usr/lib/python3/dist-packages/websockify /usr/share/novnc/utils/websockify && \
-    mkdir -p $HOME/.vnc && \
-    mkdir -p /var/log/supervisor
+# 3. Setup Environment for Root (Allows Firefox to run as root)
+ENV HOME=/root
+RUN mkdir -p $HOME/.vnc
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
-# 5. Copy Configuration Files
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY entrypoint.sh /entrypoint.sh
+# 4. Port Exposure
+EXPOSE 8080
 
-# 6. Set Permissions
-RUN chmod +x /entrypoint.sh && \
-    chown -R $USER:$USER $HOME
-
-# 7. Switch to User
-USER $USER
-WORKDIR $HOME
-
-# 8. Start
-ENTRYPOINT ["/entrypoint.sh"]
+# 5. Start Command
+CMD ["/start.sh"]
