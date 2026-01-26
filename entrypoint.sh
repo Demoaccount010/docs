@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "------------------------------------------------"
-echo "Starting Render VPS..."
+echo "Starting Render VPS (Stable Mode)..."
 echo "------------------------------------------------"
 
 # 1. Clean up old locks
@@ -12,28 +12,31 @@ mkdir -p /root/.vnc
 echo "$VNC_PASSWORD" | vncpasswd -f > /root/.vnc/passwd
 chmod 600 /root/.vnc/passwd
 
-# 3. Start VNC Server
+# 3. Start VNC Server (TigerVNC)
 echo "Starting VNC Server on :1..."
-vncserver :1 -geometry $RESOLUTION -depth 24 -passwd /root/.vnc/passwd &
-sleep 3  # Wait for VNC to start
+# 'localhost' flag zaroori hai taaki bahar se koi direct hack na kare
+vncserver :1 -geometry $RESOLUTION -depth 24 -localhost -passwd /root/.vnc/passwd &
 
-# 4. Start XFCE
+# Wait for VNC to fully start
+sleep 5
+
+# 4. Start XFCE Desktop
 echo "Starting XFCE Desktop..."
 export DISPLAY=:1
 dbus-launch startxfce4 &
 
-# 5. Start noVNC (THE FIX IS HERE)
+# 5. Start noVNC (Web Server)
 if [ -z "$PORT" ]; then
     PORT=10000
 fi
 
 echo "Starting noVNC on port $PORT..."
+echo "Access URL: https://your-app.onrender.com (No need for /vnc.html)"
 
-# Hum 'python3' command explicitly use karenge taaki Permission Denied na aaye
-# Aur '0.0.0.0' use karenge taaki Render detect kar sake
-python3 /usr/lib/python3/dist-packages/websockify/websocketproxy.py --web /usr/share/novnc/ 0.0.0.0:$PORT localhost:5901 &
+# Hum seedha 'websockify' executable use karenge (Python script path ka jhanjhat khatam)
+websockify --web=/usr/share/novnc/ 0.0.0.0:$PORT localhost:5901 &
 
-# 6. Fixes
+# 6. Browser Sandbox Fix
 echo "export MOZ_FAKE_NO_SANDBOX=1" >> /root/.bashrc
 echo "export NO_SANDBOX=1" >> /root/.bashrc
 
@@ -42,6 +45,5 @@ echo "------------------------------------------------"
 neofetch
 echo "------------------------------------------------"
 
-# 8. THE FOREVER LOOP
-echo "Container is running. Access via Render URL."
+# 8. Keep Alive
 tail -f /dev/null
