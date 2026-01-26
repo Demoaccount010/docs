@@ -7,7 +7,7 @@ ENV RESOLUTION=1280x720
 ENV VNC_PORT=5901
 ENV VNC_PASSWORD=admin123
 
-# 1. Install Sabkuch (Ab isme Neofetch bhi daal diya hai)
+# 1. Install Dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     xfce4 \
     xfce4-goodies \
@@ -22,7 +22,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     git \
     nano \
-    # Specs dikhane ke liye safe tool
+    net-tools \
+    procps \
+    # Specs Look
     neofetch \
     # Bot Tools
     python3 \
@@ -34,16 +36,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. Setup noVNC
-RUN ln -s /usr/share/novnc/utils/launch.sh /usr/share/novnc/launch.sh && \
-    ln -s /usr/lib/python3/dist-packages/websockify /usr/share/novnc/utils/websockify
+# 2. Fix noVNC paths & Set Default Page
+# Ye line 'vnc.html' ko 'index.html' bana degi taaki direct open ho
+RUN ln -s /usr/share/novnc/vnc.html /usr/share/novnc/index.html
 
-# 3. Copy Script
+# 3. Setup Directories
+RUN mkdir -p /root/.vnc
+
+# 4. Copy Entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# 4. Fix Permissions
-RUN mkdir -p /root/.vnc
 
 # 5. Start
 CMD ["/entrypoint.sh"]
