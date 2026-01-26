@@ -1,0 +1,11 @@
+image:
+  file: Dockerfile
+
+ports:
+  - port: 8080
+    onOpen: open-browser
+    visibility: public
+
+tasks:
+  - name: Start VPS
+    command: /start.sh
